@@ -1,0 +1,30 @@
+{
+  "name": "node_ip_get_set",
+  "version": "0.0.0",
+  "description": "Get/set ip addresses in Widows and Ubuntu",
+  "main": "app.js",
+  "scripts": {
+    "test": "node node_modules/mocha/bin/mocha"
+  },
+  "author": "Sergey Lapin",
+  "license": "MIT",
+  "devDependencies": {
+    "mocha": "^1.21.4"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/svlapin/node_IP_get_set.git"
+  },
+  "keywords": [
+    "network",
+    "node"
+  ],
+  "bugs": {
+    "url": "https://github.com/svlapin/node_IP_get_set/issues"
+  },
+  "homepage": "https://github.com/svlapin/node_IP_get_set"
+}
