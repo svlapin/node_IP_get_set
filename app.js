@@ -12,23 +12,34 @@ var isWin = /win/i.test(os.type());
  * GET wrapper
  */
 function getNetStats(name, cb) {
-  isWin ? winGetNetStats(name, cb) : linGetNetStats(name, cb);
+  'use strict';
+  if (isWin) {
+    winGetNetStats(name, cb);
+  } else {
+    linGetNetStats(name, cb);
+  }
 }
 
 /**
  * SET wrapper
  */
 function setNetParams(par, cb) {
-  isWin ? winSetNetParameters(par, cb) : linSetNetParameters(par, cb);
+  'use strict';
+  if (isWin) {
+    winSetNetParameters(par, cb);
+  } else {
+    linSetNetParameters(par, cb);
+  }
 }
 
 /**
  * Runs netsh for a given interface name and parses its output
- * @param  {String} Interface name
- * @param  {Function} callback executed with error and a result
+ * @param  {String} name Interface name
+ * @param  {Function} cb callback executed with error and a result
  *  having format of { isStatic: Boolean, ip: String, maskLength: Number, gw: String }
  */
 function winGetNetStats(name, cb) {
+  'use strict';
   childProcess.exec('netsh interface ip show addresses "' + name + '"',
       function(err, stdout, stderr) {
         if (err) {
@@ -49,16 +60,18 @@ function winGetNetStats(name, cb) {
         }
 
         cb(null, res);
-  });
+      }
+  );
 }
 
 /**
  * Set net params in windows
  * @param  {[type]}   par { name: String, isStatic: Boolean, [ip: String],
  *  [mask: String], [gw: String]}
- * @param  {Function} callback takes only optional error occured
+ * @param  {Function} cb callback takes only optional error occured
  */
 function winSetNetParameters(par, cb) {
+  'use strict';
   if (!par.name) {
     return process.nextTick(function() {
       cb(new Error('Name is not set'));
@@ -75,10 +88,10 @@ function winSetNetParameters(par, cb) {
     par.ip = validateIp(par.ip) ? par.ip : null;
     par.mask = validateIp(par.mask) ? par.mask : null;
     par.gw = validateIp(par.gw) ? par.gw : null;
-    console.log(par)
+
     if (!(par.ip && par.mask && par.gw)) {
       return process.nextTick(function() {
-          cb(new Error('Invalid parameters'));
+        cb(new Error('Invalid parameters'));
       });
     }
 
@@ -101,11 +114,12 @@ function winSetNetParameters(par, cb) {
 
 /**
  * Runs nmcli for a given interface name and parses its output
- * @param  {String} Interface name
- * @param  {Function} callback executed with error and a result
+ * @param {String} name Interface name
+ * @param {Function} cb callback executed with error and a result
  *  having format of { isStatic: Boolean, ip: String, maskLength: Number, gw: String }
  */
 function linGetNetStats(name, cb) {
+  'use strict';
   cb(new Error('Not yet implemented'));
 }
 
@@ -113,9 +127,10 @@ function linGetNetStats(name, cb) {
  * Set net params in ubuntu
  * @param  {[type]}   par { name: String, isStatic: Boolean, [ip: String],
  *  [mask: String], [gw: String]}
- * @param  {Function} callback takes only optional error occured
+ * @param  {Function} cb callback takes only optional error occured
  */
 function linSetNetParameters(par, cb) {
+  'use strict';
   cb(new Error('Not yet implemented'));
 }
 
@@ -125,5 +140,6 @@ function linSetNetParameters(par, cb) {
  * @return {Boolean}
  */
 function validateIp(ip) {
+  'use strict';
   return /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip);
 }
