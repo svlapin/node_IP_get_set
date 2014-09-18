@@ -53,7 +53,7 @@ function winGetNetStats(name, cb) {
         try {
           res.isStatic = stdout.match(/DHCP enabled:\s*(Yes|No)/)[1] === 'No';
           res.ip = stdout.match(/IP Address:\s*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/)[1];
-          res.maskLength = parseInt(stdout.match(/Subnet Prefix:\s*[\d\.]+\/(\d{1,2})/)[1], 10);
+          res.mask = formatNetMask(parseInt(stdout.match(/Subnet Prefix:\s*[\d\.]+\/(\d{1,2})/)[1], 10));
           res.gw = stdout.match(/Default Gateway:\s*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/)[1];
         } catch (e) {
           return cb(new Error('Unknown `netsh` output format'));
@@ -120,7 +120,30 @@ function winSetNetParameters(par, cb) {
  */
 function linGetNetStats(name, cb) {
   'use strict';
-  cb(new Error('Not yet implemented'));
+
+  childProcess.exec(
+      ['nmcli', '-t', 'dev', 'list', 'iface', name].join(' '),
+      function(err, stdout, stderr) {
+        var res;
+
+        try {
+          var data = stdout.match(/IP4\.ADDRESS\[1\]:\s?(.+)\n/)[1];
+
+          // e.g. matches 'ip = 192.168.82.4/24, gw = 192.168.82.1'
+          var match = data.match(/ip\s?=\s?([\d.]+)\/(\d{1,2}),\s?gw\s?=\s?([\d.]+)/);
+          res = {
+            name: stdout.match(/GENERAL\.DEVICE:\s?(\w+)\n/)[1],
+            ip: match && match[1] || null,
+            mask: match && formatNetMask(match[2]) || null,
+            gw: match && match[3] || null,
+            isStatic: stdout.indexOf('DHCP') === -1
+          };
+        } catch (e) {
+          return cb(new Error('Unknown `nmcli` output format'));
+        }
+        cb(null, res);
+      }
+  );
 }
 
 /**
@@ -142,4 +165,25 @@ function linSetNetParameters(par, cb) {
 function validateIp(ip) {
   'use strict';
   return /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip);
+}
+
+/**
+ * Formats netmask of a given length
+ * @param  {Number} maskLength
+ * @return {String} netmask
+ */
+function formatNetMask(maskLength) {
+  'use strict';
+
+  var bitStr = '';
+  for (var i = 0; i < maskLength; i++) {
+    bitStr += '1';
+  }
+  for (; i < 32; i++) {
+    bitStr += '0';
+  }
+
+  return bitStr.match(/[10]{8}/g).map(function(chunk) {
+    return parseInt(chunk, 2);
+  }).join('.');
 }
