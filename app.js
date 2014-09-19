@@ -1,5 +1,6 @@
 var childProcess = require('child_process');
 var os = require('os');
+var fs = require('fs');
 
 module.exports = {
   getNetStats: getNetStats,
@@ -21,10 +22,32 @@ function getNetStats(name, cb) {
 }
 
 /**
- * SET wrapper
+ * SET wrapper & validator
  */
 function setNetParams(par, cb) {
   'use strict';
+  if (!par.name) {
+    return process.nextTick(function() {
+      cb(new Error('Name is not set'));
+    });
+  }
+
+  if (typeof par.isStatic !== 'boolean') {
+    return process.nextTick(function() {
+      cb(new Error('isStatic is invalid'));
+    });
+  }
+
+  par.ip = validateIp(par.ip) ? par.ip : null;
+  par.mask = validateIp(par.mask) ? par.mask : null;
+  par.gw = validateIp(par.gw) ? par.gw : null;
+
+  if (!(par.ip && par.mask && par.gw)) {
+    return process.nextTick(function() {
+      cb(new Error('Invalid parameters'));
+    });
+  }
+
   if (isWin) {
     winSetNetParameters(par, cb);
   } else {
@@ -72,11 +95,6 @@ function winGetNetStats(name, cb) {
  */
 function winSetNetParameters(par, cb) {
   'use strict';
-  if (!par.name) {
-    return process.nextTick(function() {
-      cb(new Error('Name is not set'));
-    });
-  }
 
   if (!par.isStatic) {
     // setting dhcp mode, no need to have ip, mask and gw
@@ -85,16 +103,6 @@ function winSetNetParameters(par, cb) {
         afterExec
     );
   } else {
-    par.ip = validateIp(par.ip) ? par.ip : null;
-    par.mask = validateIp(par.mask) ? par.mask : null;
-    par.gw = validateIp(par.gw) ? par.gw : null;
-
-    if (!(par.ip && par.mask && par.gw)) {
-      return process.nextTick(function() {
-        cb(new Error('Invalid parameters'));
-      });
-    }
-
     childProcess.exec(
         'netsh interface ip set address "' + par.name + '" static ' +
         [par.ip, par.mask, par.gw].join(' '),
@@ -154,7 +162,37 @@ function linGetNetStats(name, cb) {
  */
 function linSetNetParameters(par, cb) {
   'use strict';
-  cb(new Error('Not yet implemented'));
+
+  fs.readFile('/etc/network/interfaces', { encoding: 'utf8' },
+      function(err, data) {
+        if (err) {
+          return cb(new Error('Failed to read /etc/network/interfaces'));
+        }
+
+        data = data.replace(
+          new RegExp('auto\\s+' + par.name + '\\n(?:.+(?:\\n|$))+', 'g'), ''
+        );
+
+        var str = '\n\nauto ' + par.name + '\niface ' + par.name + ' inet ' +
+          (par.isStatic ? 'static' : 'dhcp');
+
+        if (par.isStatic) {
+          str += '\n    address ' + par.ip + '\n    netmask ' + par.mask +
+            '\n    gateway ' + par.gw;
+        }
+        str += '\n';
+
+        data = (data + str).replace(/\n\n\n/g, '\n\n');
+
+        fs.writeFileSync('/etc/network/interfaces', data);
+
+        childProcess.exec('ifdown ' + par.name + ' && ifup ' + par.name,
+            function(err, stdout, stderr) {
+              cb(null);
+            }
+        );
+      }
+  );
 }
 
 /**

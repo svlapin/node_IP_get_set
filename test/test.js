@@ -42,6 +42,15 @@ describe('set net parameters', function() {
     });
   });
 
+  it('should give a error when isStatic is invalid', function(done) {
+    ipGetSet.setNetParams({ name: 'some' }, function(err) {
+      if (!(err && err.message === 'isStatic is invalid')) {
+        throw err;
+      }
+      done();
+    });
+  });
+
   it('should give a error when setting a static ip and params are missing', function(done) {
     ipGetSet.setNetParams({
       name: iface,
